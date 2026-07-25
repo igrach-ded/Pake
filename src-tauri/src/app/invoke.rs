@@ -56,6 +56,7 @@ fn apply_badge_label(app: &AppHandle, label: Option<&str>) -> Result<(), String>
 }
 
 #[cfg(not(target_os = "macos"))]
+#[cfg(not(target_os = "android"))]
 fn apply_badge_label(app: &AppHandle, label: Option<&str>) -> Result<(), String> {
     let window = app
         .get_webview_window("pake")
@@ -64,6 +65,12 @@ fn apply_badge_label(app: &AppHandle, label: Option<&str>) -> Result<(), String>
     window
         .set_badge_count(count)
         .map_err(|e| format!("Failed to set badge count: {e}"))
+}
+
+// Android does not support dock/taskbar badges
+#[cfg(target_os = "android")]
+fn apply_badge_label(_app: &AppHandle, _label: Option<&str>) -> Result<(), String> {
+    Ok(())
 }
 
 #[derive(serde::Deserialize)]

@@ -1,4 +1,5 @@
 use crate::app::config::PakeConfig;
+#[cfg(all(not(target_os = "macos"), not(target_os = "android")))]
 use crate::util::get_data_dir;
 use std::{
     path::PathBuf,
@@ -92,13 +93,17 @@ fn open_requested_window(
         },
     )?;
 
-    let title = target_url.host_str().unwrap_or(target_url.as_str());
-    let _ = window.set_title(title);
-    let _ = window.set_focus();
+    #[cfg(not(target_os = "android"))]
+    {
+        let title = target_url.host_str().unwrap_or(target_url.as_str());
+        let _ = window.set_title(title);
+        let _ = window.set_focus();
+    }
 
     Ok(window)
 }
 
+#[cfg(not(target_os = "android"))]
 pub fn open_additional_window_safe(app: &AppHandle) {
     #[cfg(target_os = "windows")]
     {
@@ -119,6 +124,10 @@ pub fn open_additional_window_safe(app: &AppHandle) {
         }
     }
 }
+
+// Android does not support multiple windows
+#[cfg(target_os = "android")]
+pub fn open_additional_window_safe(_app: &AppHandle) {}
 
 fn build_window_with_label(
     app: &AppHandle,
@@ -212,6 +221,13 @@ fn build_window(
         }
     });
 
+    // On Android, many WebviewWindow builder methods are not available.
+    // Use a minimal builder and skip desktop-only settings.
+    #[cfg(target_os = "android")]
+    let mut window_builder = WebviewWindowBuilder::new(app, label, url)
+        .user_agent(user_agent);
+
+    #[cfg(not(target_os = "android"))]
     let mut window_builder = WebviewWindowBuilder::new(app, label, url)
         .title(effective_title)
         .visible(visible)
@@ -232,20 +248,24 @@ fn build_window(
         window_builder = window_builder.inner_size(logical_width, logical_height);
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
         window_builder = window_builder.inner_size(window_config.width, window_config.height);
     }
 
-    window_builder = window_builder
-        .always_on_top(window_config.always_on_top)
-        .incognito(window_config.incognito);
+    #[cfg(not(target_os = "android"))]
+    {
+        window_builder = window_builder
+            .always_on_top(window_config.always_on_top)
+            .incognito(window_config.incognito);
+    }
 
     #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
         window_builder = window_builder.fullscreen(window_config.fullscreen);
     }
 
+    #[cfg(not(target_os = "android"))]
     if window_config.min_width > 0.0 || window_config.min_height > 0.0 {
         let min_w = if window_config.min_width > 0.0 {
             window_config.min_width
@@ -260,6 +280,7 @@ fn build_window(
         window_builder = window_builder.min_inner_size(min_w, min_h);
     }
 
+    #[cfg(not(target_os = "android"))]
     if !window_config.enable_drag_drop {
         window_builder = window_builder.disable_drag_drop_handler();
     }
