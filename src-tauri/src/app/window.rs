@@ -3,9 +3,10 @@ use crate::app::config::PakeConfig;
 use crate::util::get_data_dir;
 use std::{
     path::PathBuf,
-    str::FromStr,
     sync::atomic::{AtomicU32, Ordering},
 };
+#[cfg(not(target_os = "android"))]
+use std::str::FromStr;
 use tauri::{
     webview::{NewWindowFeatures, NewWindowResponse},
     AppHandle, Config, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
@@ -450,9 +451,15 @@ fn build_window(
             window_builder = window_builder.focused(true);
         }
 
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
         {
             window_builder = window_builder.window_features(features).focused(true);
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            // Android does not support window_features or focused
+            let _ = features;
         }
     }
 
