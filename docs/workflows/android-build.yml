@@ -1,0 +1,206 @@
+name: Build Android App
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.26.2"
+  ANDROID_NDK_VERSION: "25.2.9519653"
+  ANDROID_PLATFORM_VERSION: "android-34"
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "App Name (lowercase, no spaces)"
+        required: true
+        default: "chatgpt"
+      title:
+        description: "App Title (display name)"
+        required: true
+        default: "ChatGPT"
+      url:
+        description: "App URL"
+        required: true
+        default: "https://chat.openai.com"
+      icon:
+        description: "Icon URL or path (optional)"
+        required: false
+      target:
+        description: "Build target"
+        required: false
+        default: "apk"
+        type: choice
+        options:
+          - apk
+          - aab
+      debug:
+        description: "Debug build"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-android:
+    name: Build Android (${{ inputs.target }})
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          echo "Installing Android NDK ${{ env.ANDROID_NDK_VERSION }}..."
+          sdkmanager "ndk;${{ env.ANDROID_NDK_VERSION }}"
+          sdkmanager "platforms;${{ env.ANDROID_PLATFORM_VERSION }}"
+          
+          # Set environment variables
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${{ env.ANDROID_NDK_VERSION }}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.ANDROID_NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          cache-on-failure: true
+
+      - name: Build CLI
+        run: pnpm run cli:build
+
+      - name: Download app icon
+        if: inputs.icon != '' && startsWith(inputs.icon, 'http')
+        run: |
+          mkdir -p src-tauri/png
+          curl -L "${{ inputs.icon }}" -o "src-tauri/png/${{ inputs.name }}_512.png"
+          echo "Downloaded icon to src-tauri/png/${{ inputs.name }}_512.png"
+
+      - name: Build Android App
+        timeout-minutes: 30
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          ARGS=("${{ inputs.url }}" "--name" "${{ inputs.name }}" "--platform" "android")
+          
+          # Add icon if provided
+          if [ -n "${{ inputs.icon }}" ]; then
+            if [[ "${{ inputs.icon }}" == http* ]]; then
+              ARGS+=("--icon" "src-tauri/png/${{ inputs.name }}_512.png")
+            else
+              ARGS+=("--icon" "${{ inputs.icon }}")
+            fi
+          fi
+          
+          # Add target format
+          ARGS+=("--targets" "${{ inputs.target }}")
+          
+          # Add debug flag if needed
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            ARGS+=("--debug")
+          fi
+          
+          echo "Building with args: ${ARGS[@]}"
+          node dist/cli.js "${ARGS[@]}"
+
+      - name: Find and move APK/AAB
+        run: |
+          mkdir -p output/android
+          
+          BUILD_TYPE="${{ inputs.debug == 'true' && 'debug' || 'release' }}"
+          TARGET="${{ inputs.target }}"
+          
+          if [ "$TARGET" = "apk" ]; then
+            APK_PATH="src-tauri/gen/android/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
+            if [ -f "$APK_PATH" ]; then
+              cp "$APK_PATH" "output/android/${{ inputs.name }}.apk"
+              echo "✅ APK built successfully"
+              ls -lh "output/android/${{ inputs.name }}.apk"
+            else
+              echo "❌ APK not found at $APK_PATH"
+              find src-tauri/gen/android -name "*.apk" -o -name "*.aab" || true
+              exit 1
+            fi
+          else
+            AAB_PATH="src-tauri/gen/android/app/build/outputs/bundle/$BUILD_TYPE/app-$BUILD_TYPE.aab"
+            if [ -f "$AAB_PATH" ]; then
+              cp "$AAB_PATH" "output/android/${{ inputs.name }}.aab"
+              echo "✅ AAB built successfully"
+              ls -lh "output/android/${{ inputs.name }}.aab"
+            else
+              echo "❌ AAB not found at $AAB_PATH"
+              find src-tauri/gen/android -name "*.apk" -o -name "*.aab" || true
+              exit 1
+            fi
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}-android-${{ inputs.target }}
+          path: output/android/*
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          omitBody: true
+          omitName: true
+          artifacts: "output/android/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Summary
+        run: |
+          echo "## 📱 Android Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App Name | ${{ inputs.name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Title | ${{ inputs.title }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ inputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target | ${{ inputs.target }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Debug | ${{ inputs.debug }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ inputs.target }}" = "apk" ]; then
+            FILE_SIZE=$(ls -lh "output/android/${{ inputs.name }}.apk" | awk '{print $5}')
+            echo "**APK Size:** $FILE_SIZE" >> $GITHUB_STEP_SUMMARY
+          else
+            FILE_SIZE=$(ls -lh "output/android/${{ inputs.name }}.aab" | awk '{print $5}')
+            echo "**AAB Size:** $FILE_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
