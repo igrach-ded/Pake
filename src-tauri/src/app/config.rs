@@ -47,6 +47,7 @@ pub struct PlatformSpecific<T> {
     pub macos: T,
     pub linux: T,
     pub windows: T,
+    pub android: T,
 }
 
 impl<T> PlatformSpecific<T> {
@@ -57,6 +58,8 @@ impl<T> PlatformSpecific<T> {
         let platform = &self.linux;
         #[cfg(target_os = "windows")]
         let platform = &self.windows;
+        #[cfg(target_os = "android")]
+        let platform = &self.android;
 
         platform
     }

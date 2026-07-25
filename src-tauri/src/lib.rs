@@ -3,7 +3,10 @@ mod app;
 mod util;
 
 use tauri::Manager;
+
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_window_state::StateFlags;
 
 #[cfg(target_os = "macos")]
@@ -17,6 +20,7 @@ use app::{
         increment_dock_badge, send_notification, set_dock_badge, set_dock_badge_label,
         update_theme_mode,
     },
+    #[cfg(not(target_os = "android"))]
     setup::{set_global_shortcut, set_system_tray},
     window::{open_additional_window_safe, set_window, MultiWindowState},
 };
@@ -36,34 +40,57 @@ pub fn run_app() {
     let (pake_config, tauri_config) = get_pake_config();
     let tauri_app = tauri::Builder::default();
 
+    // Desktop-only configuration variables
+    #[cfg(not(target_os = "android"))]
     let show_system_tray = pake_config.show_system_tray();
+    #[cfg(not(target_os = "android"))]
     let hide_on_close = pake_config.windows[0].hide_on_close;
+    #[cfg(not(target_os = "android"))]
     let activation_shortcut = pake_config.windows[0].activation_shortcut.clone();
+    #[cfg(not(target_os = "android"))]
     let init_fullscreen = pake_config.windows[0].fullscreen;
-    let start_to_tray = pake_config.windows[0].start_to_tray && show_system_tray; // Only valid when tray is enabled
+    #[cfg(not(target_os = "android"))]
+    let start_to_tray = pake_config.windows[0].start_to_tray && show_system_tray;
+    #[cfg(not(target_os = "android"))]
     let multi_instance = pake_config.multi_instance;
+    #[cfg(not(target_os = "android"))]
     let multi_window = pake_config.multi_window;
+    #[cfg(not(target_os = "android"))]
     let enable_find = pake_config.windows[0].enable_find;
 
+    // Window state plugin is desktop-only
+    #[cfg(not(target_os = "android"))]
     let window_state_plugin = WindowStatePlugin::default()
         .with_state_flags(if init_fullscreen {
             StateFlags::FULLSCREEN
         } else {
-            // Prevent flickering on the first open.
             StateFlags::all() & !StateFlags::VISIBLE
         })
         .build();
 
     #[allow(deprecated)]
-    let mut app_builder = tauri_app
-        .plugin(window_state_plugin)
-        .plugin(tauri_plugin_oauth::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_opener::init()); // Add this
+    #[allow(unused_mut)]
+    let mut app_builder = {
+        let builder = tauri_app
+            .plugin(tauri_plugin_oauth::init())
+            .plugin(tauri_plugin_http::init())
+            .plugin(tauri_plugin_shell::init())
+            .plugin(tauri_plugin_notification::init())
+            .plugin(tauri_plugin_opener::init());
 
-    // Only add single instance plugin if multiple instances are not allowed
+        #[cfg(not(target_os = "android"))]
+        {
+            builder.plugin(window_state_plugin)
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            builder
+        }
+    };
+
+    // Single instance plugin is desktop-only
+    #[cfg(not(target_os = "android"))]
     if !multi_instance {
         app_builder = app_builder.plugin(tauri_plugin_single_instance::init(
             move |app, _args, _cwd| {
@@ -96,12 +123,11 @@ pub fn run_app() {
                 tauri_config.clone(),
             ));
 
-            // --- Menu Construction Start ---
+            // --- Menu Construction Start (desktop only) ---
             #[cfg(target_os = "macos")]
             {
                 app::menu::set_app_menu(app.app_handle(), multi_window, enable_find)?;
 
-                // Event Handling for Custom Menu Item
                 app.on_menu_event(move |app_handle, event| {
                     app::menu::handle_menu_click(app_handle, event.id().as_ref());
                 });
@@ -109,34 +135,34 @@ pub fn run_app() {
             // --- Menu Construction End ---
 
             let window = set_window(app.app_handle(), &pake_config, &tauri_config)?;
-            set_system_tray(
-                app.app_handle(),
-                show_system_tray,
-                &pake_config.system_tray_path,
-                init_fullscreen,
-                multi_window,
-            )?;
-            set_global_shortcut(app.app_handle(), activation_shortcut, init_fullscreen)?;
+
+            // Desktop-only setup: system tray and global shortcut
+            #[cfg(not(target_os = "android"))]
+            {
+                set_system_tray(
+                    app.app_handle(),
+                    show_system_tray,
+                    &pake_config.system_tray_path,
+                    init_fullscreen,
+                    multi_window,
+                )?;
+                set_global_shortcut(app.app_handle(), activation_shortcut, init_fullscreen)?;
+            }
 
             // Show window after state restoration to prevent position flashing
-            // Unless start_to_tray is enabled, then keep it hidden
+            #[cfg(not(target_os = "android"))]
             if !start_to_tray {
                 let window_clone = window.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(tokio::time::Duration::from_millis(WINDOW_SHOW_DELAY)).await;
                     let _ = window_clone.show();
 
-                    // Fixed: Linux fullscreen issue with virtual keyboard
                     #[cfg(target_os = "linux")]
                     {
                         if init_fullscreen {
                             let _ = window_clone.set_fullscreen(true);
-                            // Ensure webview maintains focus for input after fullscreen
                             let _ = window_clone.set_focus();
                         } else {
-                            // Fix: Ubuntu 24.04/GNOME window buttons non-functional until resize (#1122)
-                            // The window manager needs time to process the MapWindow event before
-                            // accepting focus requests. Without this, decorations remain non-interactive.
                             tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
                             let _ = window_clone.set_focus();
                         }
@@ -144,12 +170,19 @@ pub fn run_app() {
                 });
             }
 
+            // On Android, the window is always visible — no tray, no hide logic
+            #[cfg(target_os = "android")]
+            {
+                let _ = &window;
+            }
+
             Ok(())
         })
+        // Window close event handling is desktop-only
+        #[cfg(not(target_os = "android"))]
         .on_window_event(move |_window, _event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
                 if hide_on_close && _window.label() == "pake" {
-                    // Hide window when hide_on_close is enabled (regardless of tray status)
                     let window = _window.clone();
                     tauri::async_runtime::spawn(async move {
                         #[cfg(target_os = "macos")]
@@ -163,19 +196,15 @@ pub fn run_app() {
                         {
                             if window.is_fullscreen().unwrap_or(false) {
                                 let _ = window.set_fullscreen(false);
-                                // Restore focus after exiting fullscreen to fix input issues
                                 let _ = window.set_focus();
                             }
                         }
-                        // On macOS, directly hide without minimize to avoid duplicate Dock icons
                         #[cfg(not(target_os = "macos"))]
                         let _ = window.minimize();
                         let _ = window.hide();
                     });
                     api.prevent_close();
                 }
-                // If hide_on_close is false, allow normal close behavior
-                // This lets tauri-plugin-window-state save the window position and size
             }
         })
         .build(tauri::generate_context!())
