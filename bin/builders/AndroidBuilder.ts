@@ -147,7 +147,10 @@ export default class AndroidBuilder extends BaseBuilder {
     const debugFlag = this.options.debug ? ' --debug' : '';
     const verboseFlag = this.options.debug ? ' --verbose' : '';
 
-    const buildCommand = `cd "${npmDirectory}" && ${packageManager} run tauri${argSeparator} android build${targetFlag}${bundleFlag}${debugFlag}${verboseFlag} --config "${configPath}"`;
+    // Add cli-build feature so Rust code reads .pake/pake.json instead of default
+    const featuresFlag = ' --features cli-build';
+
+    const buildCommand = `cd "${npmDirectory}" && ${packageManager} run tauri${argSeparator} android build${targetFlag}${bundleFlag}${debugFlag}${verboseFlag}${featuresFlag} --config "${configPath}"`;
 
     try {
       await shellExec(buildCommand, buildTimeout, buildEnv);
