@@ -224,8 +224,7 @@ fn build_window(
     // On Android, many WebviewWindow builder methods are not available.
     // Use a minimal builder and skip desktop-only settings.
     #[cfg(target_os = "android")]
-    let mut window_builder = WebviewWindowBuilder::new(app, label, url)
-        .user_agent(user_agent);
+    let mut window_builder = WebviewWindowBuilder::new(app, label, url).user_agent(user_agent);
 
     #[cfg(not(target_os = "android"))]
     let mut window_builder = WebviewWindowBuilder::new(app, label, url)
