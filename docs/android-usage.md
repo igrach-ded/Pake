@@ -7,19 +7,23 @@ Pake теперь поддерживает создание Android прилож
 Перед началом убедитесь, что у вас установлены:
 
 ### 1. Rust и Cargo
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 ### 2. Android SDK и NDK
+
 Установите через Android Studio или sdkmanager:
 
 **Через Android Studio:**
+
 - Скачайте [Android Studio](https://developer.android.com/studio)
 - Установите Android SDK через SDK Manager
 - Установите NDK (версия 25+) через SDK Manager
 
 **Или через командную строку:**
+
 ```bash
 # Установите cmdline-tools
 sdkmanager "cmdline-tools;latest"
@@ -29,6 +33,7 @@ sdkmanager "ndk;25.2.9519653"
 ```
 
 ### 3. Настройте переменные окружения
+
 ```bash
 export ANDROID_HOME=$HOME/Android/Sdk  # или путь к вашему SDK
 export NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
@@ -37,6 +42,7 @@ export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
 ```
 
 ### 4. Java Development Kit (JDK 17+)
+
 ```bash
 # Ubuntu/Debian
 sudo apt install openjdk-17-jdk
@@ -51,6 +57,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17  # macOS
 ```
 
 ### 5. Rust Android targets
+
 ```bash
 rustup target add aarch64-linux-android
 rustup target add armv7-linux-androideabi
@@ -59,6 +66,7 @@ rustup target add i686-linux-android
 ```
 
 ### 6. cargo-ndk
+
 ```bash
 cargo install cargo-ndk
 ```
@@ -66,6 +74,7 @@ cargo install cargo-ndk
 ## Использование
 
 ### Базовое использование
+
 ```bash
 pake https://example.com --name MyApp --platform android
 ```
@@ -84,21 +93,25 @@ pake https://example.com --name MyApp --platform android
 ### Примеры
 
 **Создать APK из веб-сайта:**
+
 ```bash
 pake https://chatgpt.com --name ChatGPT --platform android
 ```
 
 **Создать AAB для Google Play:**
+
 ```bash
 pake https://twitter.com --name Twitter --platform android --targets aab
 ```
 
 **С custom иконкой:**
+
 ```bash
 pake https://github.com --name GitHub --platform android --icon ./my-icon.png
 ```
 
 **Debug сборка для тестирования:**
+
 ```bash
 pake https://example.com --name TestApp --platform android --debug
 ```
@@ -106,11 +119,13 @@ pake https://example.com --name TestApp --platform android --debug
 ## Установка APK на устройство
 
 ### Через ADB
+
 ```bash
 adb install MyApp.apk
 ```
 
 ### Через файловый менеджер
+
 1. Скопируйте `MyApp.apk` на устройство
 2. Откройте файл через файловый менеджер
 3. Разрешите установку из неизвестных источников
@@ -119,21 +134,22 @@ adb install MyApp.apk
 ## Архитектура
 
 Pake для Android использует:
+
 - **Tauri 2.x** - фреймворк для создания кроссплатформенных приложений
 - **Android WebView** - для отображения веб-контента
 - **Rust** - для нативной логики и безопасности
 
 ### Отличия от десктопной версии
 
-| Функция | Десктоп | Android |
-|---------|---------|---------|
-| System Tray | ✅ | ❌ |
-| Global Shortcuts | ✅ | ❌ |
-| Window Resize | ✅ | ❌ |
-| Menu Bar | ✅ | ❌ |
-| Hide on Close | ✅ | ❌ |
-| User Agent | Desktop | Mobile |
-| Output Format | .dmg/.msi/.deb | .apk/.aab |
+| Функция          | Десктоп        | Android   |
+| ---------------- | -------------- | --------- |
+| System Tray      | ✅             | ❌        |
+| Global Shortcuts | ✅             | ❌        |
+| Window Resize    | ✅             | ❌        |
+| Menu Bar         | ✅             | ❌        |
+| Hide on Close    | ✅             | ❌        |
+| User Agent       | Desktop        | Mobile    |
+| Output Format    | .dmg/.msi/.deb | .apk/.aab |
 
 ## Структура проекта
 
@@ -156,28 +172,34 @@ src-tauri/
 ## Troubleshooting
 
 ### ANDROID_HOME not set
+
 ```bash
 export ANDROID_HOME=$HOME/Android/Sdk
 ```
 
 ### JDK not found
+
 Убедитесь, что `JAVA_HOME` указывает на JDK 17+:
+
 ```bash
 export JAVA_HOME=/path/to/jdk-17
 java -version  # должно показать 17+
 ```
 
 ### NDK not found
+
 ```bash
 export NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ```
 
 ### Rust target not installed
+
 ```bash
 rustup target add aarch64-linux-android
 ```
 
 ### cargo-ndk not found
+
 ```bash
 cargo install cargo-ndk
 ```

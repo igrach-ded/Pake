@@ -81,8 +81,8 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -116,18 +116,18 @@ jobs:
         timeout-minutes: 30
         run: |
           ARGS=("${{ matrix.app.url }}" "--name" "${{ matrix.app.name }}" "--platform" "android")
-          
+
           # Use pre-built icon if available
           if [ -f "src-tauri/png/${{ matrix.app.name }}_512.png" ]; then
             ARGS+=("--icon" "src-tauri/png/${{ matrix.app.name }}_512.png")
           fi
-          
+
           ARGS+=("--targets" "${{ inputs.target }}")
-          
+
           if [ "${{ inputs.debug }}" = "true" ]; then
             ARGS+=("--debug")
           fi
-          
+
           echo "Building ${{ matrix.app.title }}..."
           node dist/cli.js "${ARGS[@]}"
 
@@ -136,14 +136,14 @@ jobs:
           mkdir -p output/android
           BUILD_TYPE="${{ inputs.debug == 'true' && 'debug' || 'release' }}"
           EXT="${{ inputs.target }}"
-          
+
           SOURCE="src-tauri/gen/android/app/build/outputs"
           if [ "$EXT" = "apk" ]; then
             SOURCE="$SOURCE/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
           else
             SOURCE="$SOURCE/bundle/$BUILD_TYPE/app-$BUILD_TYPE.aab"
           fi
-          
+
           if [ -f "$SOURCE" ]; then
             cp "$SOURCE" "output/android/${{ matrix.app.title }}.$EXT"
             ls -lh "output/android/"

@@ -42,7 +42,7 @@ jobs:
   build-android:
     name: Build Android (${{ inputs.target }})
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -64,8 +64,8 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -75,7 +75,7 @@ jobs:
           echo "Installing Android NDK ${{ env.ANDROID_NDK_VERSION }}..."
           sdkmanager "ndk;${{ env.ANDROID_NDK_VERSION }}"
           sdkmanager "platforms;${{ env.ANDROID_PLATFORM_VERSION }}"
-          
+
           # Set environment variables
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
@@ -114,7 +114,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           ARGS=("${{ inputs.url }}" "--name" "${{ inputs.name }}" "--platform" "android")
-          
+
           # Add icon if provided
           if [ -n "${{ inputs.icon }}" ]; then
             if [[ "${{ inputs.icon }}" == http* ]]; then
@@ -123,25 +123,25 @@ jobs:
               ARGS+=("--icon" "${{ inputs.icon }}")
             fi
           fi
-          
+
           # Add target format
           ARGS+=("--targets" "${{ inputs.target }}")
-          
+
           # Add debug flag if needed
           if [ "${{ inputs.debug }}" = "true" ]; then
             ARGS+=("--debug")
           fi
-          
+
           echo "Building with args: ${ARGS[@]}"
           node dist/cli.js "${ARGS[@]}"
 
       - name: Find and move APK/AAB
         run: |
           mkdir -p output/android
-          
+
           BUILD_TYPE="${{ inputs.debug == 'true' && 'debug' || 'release' }}"
           TARGET="${{ inputs.target }}"
-          
+
           if [ "$TARGET" = "apk" ]; then
             APK_PATH="src-tauri/gen/android/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
             if [ -f "$APK_PATH" ]; then
@@ -196,7 +196,7 @@ jobs:
           echo "| Target | ${{ inputs.target }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Debug | ${{ inputs.debug }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ inputs.target }}" = "apk" ]; then
             FILE_SIZE=$(ls -lh "output/android/${{ inputs.name }}.apk" | awk '{print $5}')
             echo "**APK Size:** $FILE_SIZE" >> $GITHUB_STEP_SUMMARY

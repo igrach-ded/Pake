@@ -6,7 +6,11 @@ import { PakeAppOptions } from '@/types';
 import { npmDirectory } from '@/utils/dir';
 import { getSpinner } from '@/utils/info';
 import { shellExec } from '@/utils/shell';
-import { detectPackageManager, getBuildEnvironment, getBuildTimeout } from './env';
+import {
+  detectPackageManager,
+  getBuildEnvironment,
+  getBuildTimeout,
+} from './env';
 import logger from '@/options/logger';
 import BaseBuilder from './BaseBuilder';
 
@@ -106,7 +110,12 @@ export default class AndroidBuilder extends BaseBuilder {
     await mergeConfig(url, this.options, tauriConf);
 
     // Ensure Tauri Android project is initialised
-    const tauriAndroidDir = path.join(npmDirectory, 'src-tauri', 'gen', 'android');
+    const tauriAndroidDir = path.join(
+      npmDirectory,
+      'src-tauri',
+      'gen',
+      'android',
+    );
     if (!(await fsExtra.pathExists(tauriAndroidDir))) {
       logger.info('✺ Initialising Tauri Android project...');
       const initCmd = `cd "${npmDirectory}" && ${packageManager} run tauri android init`;
@@ -162,8 +171,7 @@ export default class AndroidBuilder extends BaseBuilder {
     let builtFile: string | null = null;
     if (await fsExtra.pathExists(sourcePath)) {
       const files = await fsExtra.readdir(sourcePath);
-      builtFile =
-        files.find((f) => f.endsWith(`.${ext}`)) || null;
+      builtFile = files.find((f) => f.endsWith(`.${ext}`)) || null;
     }
 
     if (builtFile) {

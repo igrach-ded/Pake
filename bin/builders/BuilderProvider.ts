@@ -40,9 +40,7 @@ export default class BuilderProvider {
     const hostPlatform = platformAliasMap[requested] || platform;
     const Builder = buildersMap[hostPlatform];
     if (!Builder) {
-      throw new Error(
-        `The current system "${hostPlatform}" is not supported!`,
-      );
+      throw new Error(`The current system "${hostPlatform}" is not supported!`);
     }
     return new Builder(options);
   }

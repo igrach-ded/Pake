@@ -28,6 +28,7 @@ git push origin arena/019f98d0-pake
 ### 1. Включить GitHub Actions (если отключены)
 
 Перейди в:
+
 ```
 Settings → Actions → General → "Allow all actions and reusable workflows"
 ```
@@ -35,14 +36,15 @@ Settings → Actions → General → "Allow all actions and reusable workflows"
 ### 2. Добавить Secrets (опционально, для подписи APK)
 
 Перейди в:
+
 ```
 Settings → Secrets and variables → Actions → New repository secret
 ```
 
-| Secret Name | Описание | Обязательно? |
-|---|---|---|
-| `TAURI_SIGNING_PRIVATE_KEY` | Приватный ключ для подписи Tauri (updater) | ❌ Нет |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Пароль к ключу | ❌ Нет |
+| Secret Name                          | Описание                                   | Обязательно? |
+| ------------------------------------ | ------------------------------------------ | ------------ |
+| `TAURI_SIGNING_PRIVATE_KEY`          | Приватный ключ для подписи Tauri (updater) | ❌ Нет       |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Пароль к ключу                             | ❌ Нет       |
 
 > ⚠️ Без secrets APK будет собран с debug-подписью. Для Google Play нужна release-подпись (инструкции ниже).
 
@@ -62,6 +64,7 @@ Settings → Secrets and variables → Actions → New repository secret
 ### 4. Скачать APK
 
 После сборки:
+
 1. Перейди в **Actions** → найди завершённый workflow
 2. Внизу страницы → **Artifacts** → скачай `chatgpt-android-apk`
 3. Разархивируй → получишь `chatgpt.apk`
@@ -75,11 +78,13 @@ Settings → Secrets and variables → Actions → New repository secret
 ### Вариант 1: Keystore через GitHub Secrets
 
 1. Создай keystore:
+
 ```bash
 keytool -genkey -v -keystore release.keystore -alias pake -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 2. Base64-кодируй keystore:
+
 ```bash
 base64 -i release.keystore | pbcopy  # macOS
 base64 -i release.keystore | xclip   # Linux
@@ -127,28 +132,33 @@ zipalign -v 4 chatgpt.apk chatgpt-aligned.apk
 ## 🐛 Troubleshooting
 
 ### "Workflow not found"
+
 - Убедись что файлы в `.github/workflows/` закоммичены и запушены
 
 ### "Rust compilation error"
+
 - Проверь что `Cargo.toml` содержит правильные `cfg(not(target_os = "android"))` атрибуты
 
 ### "Android SDK not found"
+
 - Workflow использует `android-actions/setup-android@v3`, должен работать автоматически
 
 ### "Out of memory"
+
 - Android сборка требует ~4GB RAM. GitHub runners дают 7GB, должно хватить
 
 ### "Build timeout"
+
 - Первый build может занять до 30 минут. Увеличь `timeout-minutes` если нужно
 
 ---
 
 ## 📊 Ожидаемые размеры артефактов
 
-| App | APK Size | AAB Size |
-|-----|----------|----------|
-| ChatGPT | ~6-8 MB | ~5-7 MB |
-| Twitter | ~6-8 MB | ~5-7 MB |
-| YouTube | ~6-8 MB | ~5-7 MB |
+| App     | APK Size | AAB Size |
+| ------- | -------- | -------- |
+| ChatGPT | ~6-8 MB  | ~5-7 MB  |
+| Twitter | ~6-8 MB  | ~5-7 MB  |
+| YouTube | ~6-8 MB  | ~5-7 MB  |
 
 Для сравнения: нативные приложения → 50-150 MB.
