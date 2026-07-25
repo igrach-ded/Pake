@@ -139,31 +139,22 @@ jobs:
         run: |
           mkdir -p output/android
 
-          BUILD_TYPE="${{ inputs.debug == 'true' && 'debug' || 'release' }}"
           TARGET="${{ inputs.target }}"
+          EXT="$TARGET"
 
-          if [ "$TARGET" = "apk" ]; then
-            APK_PATH="src-tauri/gen/android/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
-            if [ -f "$APK_PATH" ]; then
-              cp "$APK_PATH" "output/android/${{ inputs.name }}.apk"
-              echo "✅ APK built successfully"
-              ls -lh "output/android/${{ inputs.name }}.apk"
-            else
-              echo "❌ APK not found at $APK_PATH"
-              find src-tauri/gen/android -name "*.apk" -o -name "*.aab" || true
-              exit 1
-            fi
+          # Use find to locate the built artifact — Tauri Android puts files
+          # in various subdirectories (universal/debug, arm64/release, etc.)
+          FOUND_FILE=$(find src-tauri/gen/android/app/build/outputs -name "*.$EXT" -type f | head -1)
+
+          if [ -n "$FOUND_FILE" ]; then
+            cp "$FOUND_FILE" "output/android/${{ inputs.name }}.$EXT"
+            echo "✅ ${EXT^^} built successfully"
+            ls -lh "output/android/${{ inputs.name }}.$EXT"
           else
-            AAB_PATH="src-tauri/gen/android/app/build/outputs/bundle/$BUILD_TYPE/app-$BUILD_TYPE.aab"
-            if [ -f "$AAB_PATH" ]; then
-              cp "$AAB_PATH" "output/android/${{ inputs.name }}.aab"
-              echo "✅ AAB built successfully"
-              ls -lh "output/android/${{ inputs.name }}.aab"
-            else
-              echo "❌ AAB not found at $AAB_PATH"
-              find src-tauri/gen/android -name "*.apk" -o -name "*.aab" || true
-              exit 1
-            fi
+            echo "❌ No .$EXT file found in build outputs"
+            echo "Searched in: src-tauri/gen/android/app/build/outputs/"
+            find src-tauri/gen/android/app/build/outputs -type f || true
+            exit 1
           fi
 
       - name: Upload artifact
