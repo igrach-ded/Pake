@@ -433,7 +433,15 @@ async function writeAllConfigs(
 
   const tauriConf2 = JSON.parse(JSON.stringify(tauriConf));
   delete tauriConf2.pake;
-  if (process.env.NODE_ENV === 'development') {
+
+  // For Android, strip desktop-specific bundle fields that would
+  // fail Tauri's JSON schema validation (e.g. "targets": ["apk"]
+  // is not a valid desktop target).
+  if (platform === 'android') {
+    tauriConf2.bundle = {
+      icon: tauriConf.bundle.icon,
+    };
+  } else if (process.env.NODE_ENV === 'development') {
     tauriConf2.bundle = bundleConf.bundle;
   }
   const configJsonPath = path.join(tauriConfigDirectory, 'tauri.conf.json');
@@ -512,6 +520,14 @@ export async function mergeConfig(
     if (validMacTargets.includes(options.targets)) {
       tauriConf.bundle.targets = [options.targets];
     }
+  }
+
+  // For Android, clear desktop bundle.targets (not valid for Android schema)
+  if (platform === 'android') {
+    delete tauriConf.bundle.targets;
+    delete tauriConf.bundle.linux;
+    delete tauriConf.bundle.windows;
+    delete tauriConf.bundle.macOS;
   }
 
   const safeAppName = getSafeAppName(name);

@@ -17,16 +17,22 @@ const MacConf = fsExtra.readJSONSync(
 const LinuxConf = fsExtra.readJSONSync(
   path.join(tauriSrcDir, 'tauri.linux.conf.json'),
 );
+const AndroidConf = fsExtra.pathExistsSync(
+  path.join(tauriSrcDir, 'tauri.android.conf.json'),
+)
+  ? fsExtra.readJSONSync(path.join(tauriSrcDir, 'tauri.android.conf.json'))
+  : { bundle: { icon: CommonConf.bundle?.icon || [] } };
 
 const platformConfigs = {
   win32: WinConf,
   darwin: MacConf,
   linux: LinuxConf,
+  android: AndroidConf,
 };
 
 const { platform } = process;
 // @ts-ignore
-const platformConfig = platformConfigs[platform];
+const platformConfig = platformConfigs[platform] || LinuxConf;
 
 let tauriConfig = {
   ...CommonConf,
