@@ -1,12 +1,12 @@
 use crate::app::config::PakeConfig;
 #[cfg(all(not(target_os = "macos"), not(target_os = "android")))]
 use crate::util::get_data_dir;
+#[cfg(not(target_os = "android"))]
+use std::str::FromStr;
 use std::{
     path::PathBuf,
     sync::atomic::{AtomicU32, Ordering},
 };
-#[cfg(not(target_os = "android"))]
-use std::str::FromStr;
 use tauri::{
     webview::{NewWindowFeatures, NewWindowResponse},
     AppHandle, Config, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
