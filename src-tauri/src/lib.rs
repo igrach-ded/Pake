@@ -178,9 +178,9 @@ pub fn run_app() {
 
             Ok(())
         })
-        // Window close event handling is desktop-only
-        #[cfg(not(target_os = "android"))]
         .on_window_event(move |_window, _event| {
+            // Window close event handling is desktop-only
+            #[cfg(not(target_os = "android"))]
             if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
                 if hide_on_close && _window.label() == "pake" {
                     let window = _window.clone();
