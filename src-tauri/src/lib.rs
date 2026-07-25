@@ -20,10 +20,12 @@ use app::{
         increment_dock_badge, send_notification, set_dock_badge, set_dock_badge_label,
         update_theme_mode,
     },
-    #[cfg(not(target_os = "android"))]
-    setup::{set_global_shortcut, set_system_tray},
     window::{open_additional_window_safe, set_window, MultiWindowState},
 };
+
+#[cfg(not(target_os = "android"))]
+use app::setup::{set_global_shortcut, set_system_tray};
+
 use util::get_pake_config;
 
 pub fn run_app() {
