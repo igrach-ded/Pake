@@ -109,6 +109,14 @@ export default class AndroidBuilder extends BaseBuilder {
     const tauriConf = tauriConfModule.default;
     await mergeConfig(url, this.options, tauriConf);
 
+    // Config path — same as desktop builders, use .pake/ directory
+    const configPath = path.join(
+      npmDirectory,
+      'src-tauri',
+      '.pake',
+      'tauri.conf.json',
+    );
+
     // Ensure Tauri Android project is initialised
     const tauriAndroidDir = path.join(
       npmDirectory,
@@ -118,7 +126,8 @@ export default class AndroidBuilder extends BaseBuilder {
     );
     if (!(await fsExtra.pathExists(tauriAndroidDir))) {
       logger.info('✺ Initialising Tauri Android project...');
-      const initCmd = `cd "${npmDirectory}" && ${packageManager} run tauri android init`;
+      const argSep = packageManager === 'npm' ? ' --' : '';
+      const initCmd = `cd "${npmDirectory}" && ${packageManager} run tauri${argSep} android init --config "${configPath}"`;
       await shellExec(initCmd, getBuildTimeout());
     }
 
@@ -138,7 +147,7 @@ export default class AndroidBuilder extends BaseBuilder {
     const debugFlag = this.options.debug ? ' --debug' : '';
     const verboseFlag = this.options.debug ? ' --verbose' : '';
 
-    const buildCommand = `cd "${npmDirectory}" && ${packageManager} run tauri${argSeparator} android build${targetFlag}${bundleFlag}${debugFlag}${verboseFlag}`;
+    const buildCommand = `cd "${npmDirectory}" && ${packageManager} run tauri${argSeparator} android build${targetFlag}${bundleFlag}${debugFlag}${verboseFlag} --config "${configPath}"`;
 
     try {
       await shellExec(buildCommand, buildTimeout, buildEnv);
