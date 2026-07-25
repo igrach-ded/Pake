@@ -1,0 +1,161 @@
+name: Build All Android Apps
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.26.2"
+  ANDROID_NDK_VERSION: "25.2.9519653"
+  ANDROID_PLATFORM_VERSION: "android-34"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Build target"
+        required: false
+        default: "apk"
+        type: choice
+        options:
+          - apk
+          - aab
+      debug:
+        description: "Debug build"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  setup:
+    name: Setup environment
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.apps.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Generate app matrix
+        id: apps
+        run: |
+          # Read default_app_list.json and generate a simplified Android matrix
+          # Each app entry: {name, title, url}
+          MATRIX=$(cat <<'EOF'
+          [
+            {"name": "chatgpt", "title": "ChatGPT", "url": "https://chat.openai.com"},
+            {"name": "twitter", "title": "Twitter", "url": "https://twitter.com"},
+            {"name": "youtube", "title": "YouTube", "url": "https://youtube.com"},
+            {"name": "github", "title": "GitHub", "url": "https://github.com"},
+            {"name": "notion", "title": "Notion", "url": "https://notion.so"}
+          ]
+          EOF
+          )
+          echo "matrix=$(echo $MATRIX | jq -c .)" >> $GITHUB_OUTPUT
+
+  build-android:
+    name: ${{ matrix.app.title }} (Android)
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        app: ${{ fromJSON(needs.setup.outputs.apps) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;${{ env.ANDROID_NDK_VERSION }}"
+          sdkmanager "platforms;${{ env.ANDROID_PLATFORM_VERSION }}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${{ env.ANDROID_NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          shared-key: "android-${{ matrix.app.name }}"
+
+      - name: Build CLI
+        run: pnpm run cli:build
+
+      - name: Build ${{ matrix.app.title }} for Android
+        timeout-minutes: 30
+        run: |
+          ARGS=("${{ matrix.app.url }}" "--name" "${{ matrix.app.name }}" "--platform" "android")
+          
+          # Use pre-built icon if available
+          if [ -f "src-tauri/png/${{ matrix.app.name }}_512.png" ]; then
+            ARGS+=("--icon" "src-tauri/png/${{ matrix.app.name }}_512.png")
+          fi
+          
+          ARGS+=("--targets" "${{ inputs.target }}")
+          
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            ARGS+=("--debug")
+          fi
+          
+          echo "Building ${{ matrix.app.title }}..."
+          node dist/cli.js "${ARGS[@]}"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p output/android
+          BUILD_TYPE="${{ inputs.debug == 'true' && 'debug' || 'release' }}"
+          EXT="${{ inputs.target }}"
+          
+          SOURCE="src-tauri/gen/android/app/build/outputs"
+          if [ "$EXT" = "apk" ]; then
+            SOURCE="$SOURCE/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
+          else
+            SOURCE="$SOURCE/bundle/$BUILD_TYPE/app-$BUILD_TYPE.aab"
+          fi
+          
+          if [ -f "$SOURCE" ]; then
+            cp "$SOURCE" "output/android/${{ matrix.app.title }}.$EXT"
+            ls -lh "output/android/"
+          else
+            echo "Build artifact not found at: $SOURCE"
+            find src-tauri/gen/android -name "*.$EXT" 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app.title }}-android-${{ inputs.target }}
+          path: output/android/*
+          retention-days: 30

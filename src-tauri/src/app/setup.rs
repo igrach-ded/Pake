@@ -1,15 +1,23 @@
+#[cfg(not(target_os = "android"))]
 use crate::app::window::open_additional_window_safe;
+#[cfg(not(target_os = "android"))]
 use std::str::FromStr;
+#[cfg(not(target_os = "android"))]
 use std::sync::{Arc, Mutex};
+#[cfg(not(target_os = "android"))]
 use std::time::{Duration, Instant};
+#[cfg(not(target_os = "android"))]
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
+#[cfg(not(target_os = "android"))]
 pub fn set_system_tray(
     app: &AppHandle,
     show_system_tray: bool,
@@ -107,6 +115,7 @@ pub fn set_system_tray(
     Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 pub fn set_global_shortcut(
     app: &AppHandle,
     shortcut: String,

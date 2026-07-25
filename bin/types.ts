@@ -1,5 +1,5 @@
-export type SupportedPlatform = 'win32' | 'darwin' | 'linux';
-export type TauriPlatform = 'windows' | 'macos' | 'linux';
+export type SupportedPlatform = 'win32' | 'darwin' | 'linux' | 'android';
+export type TauriPlatform = 'windows' | 'macos' | 'linux' | 'android';
 
 export interface PakeCliOptions {
   // Application name
@@ -137,6 +137,9 @@ export interface PakeCliOptions {
 
   // Request microphone entitlement on macOS, default false
   microphone: boolean;
+
+  // Target platform override (default: auto-detect from host OS)
+  platform: string;
 }
 
 export interface PakeAppOptions extends PakeCliOptions {
@@ -147,6 +150,7 @@ export interface PlatformSpecific<T> {
   macos: T;
   linux: T;
   windows: T;
+  android: T;
 }
 
 export interface WindowConfig {

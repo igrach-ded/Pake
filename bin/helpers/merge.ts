@@ -74,6 +74,18 @@ function asSupportedPlatform(platform: NodeJS.Platform): SupportedPlatform {
   return platform;
 }
 
+/**
+ * Resolve effective target platform. When --platform is set to 'android' we
+ * pretend we are on linux for most config paths (AndroidBuilder overrides
+ * the actual build step), but keep the `android` value for the
+ * PlatformSpecific user-agent / system_tray slots.
+ */
+function resolveTargetPlatform(options: PakeAppOptions): SupportedPlatform {
+  const requested = (options.platform || '').toLowerCase();
+  if (requested === 'android') return 'android';
+  return asSupportedPlatform(process.platform);
+}
+
 async function copyTemplateConfigs(): Promise<void> {
   const srcTauriDir = path.join(npmDirectory, 'src-tauri');
   await fsExtra.ensureDir(tauriConfigDirectory);
@@ -83,6 +95,7 @@ async function copyTemplateConfigs(): Promise<void> {
     'tauri.macos.conf.json',
     'tauri.windows.conf.json',
     'tauri.linux.conf.json',
+    'tauri.android.conf.json',
     'pake.json',
   ];
 
@@ -233,6 +246,12 @@ async function mergeIcons(
       path: `icons/${safeAppName}.icns`,
       defaultIcon: 'icons/icon.icns',
       message: 'macOS icon must be .icns type.',
+    },
+    android: {
+      fileExt: '.png',
+      path: `png/${safeAppName}_512.png`,
+      defaultIcon: 'png/icon_512.png',
+      message: 'Android icon must be .png and 512x512px.',
     },
   };
 
@@ -399,6 +418,7 @@ async function writeAllConfigs(
     win32: 'tauri.windows.conf.json',
     darwin: 'tauri.macos.conf.json',
     linux: 'tauri.linux.conf.json',
+    android: 'tauri.android.conf.json',
   };
 
   const configPath = path.join(
@@ -440,8 +460,12 @@ export async function mergeConfig(
     microphone,
   } = options;
 
-  const platform = asSupportedPlatform(process.platform);
-  const tauriConfWindowOptions = buildWindowConfigOverrides(options, platform);
+  const platform = resolveTargetPlatform(options);
+  const hostPlatform = asSupportedPlatform(process.platform);
+  const tauriConfWindowOptions = buildWindowConfigOverrides(
+    options,
+    hostPlatform,
+  );
   Object.assign(tauriConf.pake.windows[0], { url, ...tauriConfWindowOptions });
 
   tauriConf.productName = name;
@@ -470,6 +494,7 @@ export async function mergeConfig(
     win32: 'windows',
     linux: 'linux',
     darwin: 'macos',
+    android: 'android',
   };
   const currentPlatform = platformMap[platform];
 
