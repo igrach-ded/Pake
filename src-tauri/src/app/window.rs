@@ -183,7 +183,11 @@ fn build_window(
         .product_name
         .clone()
         .unwrap_or_else(|| "pake".to_string());
-    let _data_dir = get_data_dir(app, package_name).map_err(tauri::Error::Io)?;
+    // data_directory is only used on Windows and Linux
+    #[cfg(all(not(target_os = "macos"), not(target_os = "android")))]
+    let _data_dir = get_data_dir(app, package_name.clone()).map_err(tauri::Error::Io)?;
+    #[cfg(any(target_os = "macos", target_os = "android"))]
+    let _ = &package_name;
 
     let window_config = config.windows.first().ok_or_else(|| {
         tauri::Error::Io(std::io::Error::new(
@@ -340,6 +344,8 @@ fn build_window(
         }
     }
 
+    // Proxy URL is only used on desktop platforms (Windows/Linux/macOS)
+    #[allow(unused_mut, unused_variables)]
     let mut parsed_proxy_url: Option<Url> = None;
 
     // Platform-specific configuration must be set before proxy on Windows/Linux
@@ -362,7 +368,8 @@ fn build_window(
     }
 
     // Windows and Linux: set data_directory before proxy_url
-    #[cfg(not(target_os = "macos"))]
+    // Android WebView manages its own data directory
+    #[cfg(all(not(target_os = "macos"), not(target_os = "android")))]
     {
         window_builder = window_builder.data_directory(_data_dir).theme(None);
 
@@ -391,12 +398,15 @@ fn build_window(
     }
 
     // Set proxy after platform-specific configs (required for Windows/Linux)
+    // Android uses system proxy settings
+    #[cfg(not(target_os = "android"))]
     if parsed_proxy_url.is_none() && !config.proxy_url.is_empty() {
         if let Ok(proxy_url) = Url::from_str(&config.proxy_url) {
             parsed_proxy_url = Some(proxy_url);
         }
     }
 
+    #[cfg(not(target_os = "android"))]
     if let Some(proxy_url) = parsed_proxy_url {
         window_builder = window_builder.proxy_url(proxy_url);
         #[cfg(debug_assertions)]
