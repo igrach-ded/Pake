@@ -8,15 +8,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src-tauri/**'
-      - 'bin/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+      - "src-tauri/**"
+      - "bin/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
   pull_request:
     branches: [main]
     paths:
-      - 'src-tauri/**'
-      - 'bin/**'
+      - "src-tauri/**"
+      - "bin/**"
   workflow_dispatch:
 
 env:
