@@ -321,6 +321,13 @@ fn build_window(
         .initialization_script(include_str!("../inject/auth.js"))
         .initialization_script(include_str!("../inject/custom.js"));
 
+    // Android-only: inject mobile viewport and layout adaptation
+    #[cfg(target_os = "android")]
+    {
+        window_builder =
+            window_builder.initialization_script(include_str!("../inject/mobile.js"));
+    }
+
     #[cfg(target_os = "windows")]
     let mut windows_browser_args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-blink-features=AutomationControlled");
 
