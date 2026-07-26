@@ -44,7 +44,9 @@
     "format:check": "prettier --check . --ignore-unknown",
     "release:check": "node scripts/check-release-version.mjs && pnpm run format:check && npx vitest run && pnpm run cli:build && npm pack --dry-run --ignore-scripts",
     "update": "pnpm update --verbose && cd src-tauri && cargo update",
-    "prepublishOnly": "pnpm run cli:build"
+    "prepublishOnly": "pnpm run cli:build",
+    "check:android": "mkdir -p src-tauri/.pake && cp src-tauri/tauri.conf.json src-tauri/.pake/tauri.conf.json && cp src-tauri/pake.json src-tauri/.pake/pake.json && cd src-tauri && cargo check --target aarch64-linux-android --features cli-build --lib",
+    "check:desktop": "mkdir -p src-tauri/.pake && cp src-tauri/tauri.conf.json src-tauri/.pake/tauri.conf.json && cp src-tauri/pake.json src-tauri/.pake/pake.json && cd src-tauri && cargo check --features cli-build --lib"
   },
   "type": "module",
   "exports": "./dist/cli.js",
