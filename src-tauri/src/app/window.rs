@@ -324,8 +324,7 @@ fn build_window(
     // Android-only: inject mobile viewport and layout adaptation
     #[cfg(target_os = "android")]
     {
-        window_builder =
-            window_builder.initialization_script(include_str!("../inject/mobile.js"));
+        window_builder = window_builder.initialization_script(include_str!("../inject/mobile.js"));
     }
 
     #[cfg(target_os = "windows")]

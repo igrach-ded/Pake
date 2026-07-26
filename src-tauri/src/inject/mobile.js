@@ -1,26 +1,26 @@
 // Mobile adaptation script for Android WebView
 (function () {
-  'use strict';
+  "use strict";
 
   // 1. Ensure viewport meta tag is set correctly
   function ensureViewport() {
     let viewport = document.querySelector('meta[name="viewport"]');
     if (!viewport) {
-      viewport = document.createElement('meta');
-      viewport.name = 'viewport';
+      viewport = document.createElement("meta");
+      viewport.name = "viewport";
       document.head.appendChild(viewport);
     }
     // Only set if not already configured for mobile
-    if (!viewport.content || viewport.content.indexOf('width=') === -1) {
+    if (!viewport.content || viewport.content.indexOf("width=") === -1) {
       viewport.content =
-        'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover';
+        "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover";
     }
   }
 
   // 2. Force mobile layout via CSS hints
   function injectMobileStyles() {
-    const style = document.createElement('style');
-    style.id = 'pake-mobile-styles';
+    const style = document.createElement("style");
+    style.id = "pake-mobile-styles";
     style.textContent = `
       /* Ensure body uses full width */
       html, body {
@@ -77,7 +77,7 @@
 
   // 3. Handle orientation change
   function handleOrientation() {
-    window.addEventListener('orientationchange', function () {
+    window.addEventListener("orientationchange", function () {
       setTimeout(function () {
         window.scrollTo(0, 0);
       }, 100);
@@ -85,8 +85,8 @@
   }
 
   // Run on DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
       ensureViewport();
       injectMobileStyles();
       handleOrientation();
